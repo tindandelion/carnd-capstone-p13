@@ -5,6 +5,8 @@ from geometry_msgs.msg import PoseStamped
 from styx_msgs.msg import Lane, Waypoint
 
 import math
+import json
+import os
 
 '''
 This node will publish waypoints from the car's current position to some `x` distance ahead.
@@ -23,6 +25,10 @@ TODO (for Yousuf and Aaron): Stopline location for each traffic light.
 
 LOOKAHEAD_WPS = 200 # Number of waypoints we will publish. You can change this number
 
+def dump_to_json(waypoints):
+    out = open("./waypoints.json", "w")
+    out.write(str(waypoints))
+    rospy.logerr("Waypoints dumped to: " + os.getcwd())
 
 class WaypointUpdater(object):
     def __init__(self):
@@ -46,7 +52,7 @@ class WaypointUpdater(object):
 
     def waypoints_cb(self, waypoints):
         # TODO: Implement
-        pass
+        dump_to_json(waypoints)
 
     def traffic_cb(self, msg):
         # TODO: Callback for /traffic_waypoint message. Implement
