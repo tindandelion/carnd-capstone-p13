@@ -31,8 +31,11 @@ that we have created in the `__init__` function.
 
 '''
 
+
 class DBWNode(object):
     def __init__(self):
+        self.dbw_enabled = False
+
         rospy.init_node('dbw_node')
 
         vehicle_mass = rospy.get_param('~vehicle_mass', 1736.35)
@@ -57,11 +60,14 @@ class DBWNode(object):
         # self.controller = Controller(<Arguments you wish to provide>)
 
         # TODO: Subscribe to all the topics you need to
-
+        rospy.Subscriber("/vehicle/dbw_enabled", Bool, self.toggle_dbw)
         self.loop()
 
+    def toggle_dbw(self, value):
+        self.dbw_enabled = value.data
+
     def loop(self):
-        rate = rospy.Rate(50) # 50Hz
+        rate = rospy.Rate(50)  # 50Hz
         while not rospy.is_shutdown():
             # TODO: Get predicted throttle, brake, and steering using `twist_controller`
             # You should only publish the control commands if dbw is enabled
