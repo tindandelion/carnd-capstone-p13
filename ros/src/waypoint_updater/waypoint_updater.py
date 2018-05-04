@@ -28,13 +28,6 @@ TODO (for Yousuf and Aaron): Stopline location for each traffic light.
 
 LOOKAHEAD_WPS = 200  # Number of waypoints we will publish. You can change this number
 
-
-def dump_to_json(waypoints):
-    out = open("./waypoints.json", "w")
-    out.write(str(waypoints))
-    rospy.logerr("Waypoints dumped to: " + os.getcwd())
-
-
 class WaypointUpdater(object):
     def __init__(self):
         rospy.init_node('waypoint_updater')
