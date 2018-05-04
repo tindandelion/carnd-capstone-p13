@@ -11,10 +11,11 @@ import tf
 import cv2
 import yaml
 
-from scipy.spatial import KDTree
+from waypoints import Waypoints
 
 STATE_COUNT_THRESHOLD = 3
 LIGHT_NOT_FOUND = (-1, TrafficLight.UNKNOWN)
+
 
 class TLDetector(object):
     def __init__(self):
@@ -22,12 +23,13 @@ class TLDetector(object):
 
         self.pose = None
         self.waypoints = None
-        self.waypoints_tree = None
         self.camera_image = None
         self.lights = []
 
-        sub1 = rospy.Subscriber('/current_pose', PoseStamped, self.pose_cb)
-        sub2 = rospy.Subscriber('/base_waypoints', Lane, self.waypoints_cb)
+        sub1 = rospy.Subscriber(
+            '/current_pose', PoseStamped, self.update_current_pose)
+        sub2 = rospy.Subscriber('/base_waypoints', Lane,
+                                self.update_base_waypoints)
 
         '''
         /vehicle/traffic_lights provides you with the location of the traffic light in 3D map space and
@@ -57,16 +59,12 @@ class TLDetector(object):
 
         rospy.spin()
 
-    def pose_cb(self, msg):
+    def update_current_pose(self, msg):
         self.pose = msg
         self.image_cb(None)
 
-    def waypoints_cb(self, waypoints):
-        self.waypoints = waypoints
-        waypoints_2d = [(wp.pose.pose.position.x, wp.pose.pose.position.y)
-                        for wp in self.waypoints.waypoints]
-        self.waypoints_tree = KDTree(waypoints_2d)
-        
+    def update_base_waypoints(self, lane):
+        self.waypoints = Waypoints(lane.waypoints)
 
     def traffic_cb(self, msg):
         self.lights = msg.lights
@@ -99,25 +97,12 @@ class TLDetector(object):
             self.publish_upcoming_light(light_wp)
         else:
             self.publish_upcoming_light(self.last_wp)
-            
+
         self.state_count += 1
 
     def publish_upcoming_light(self, light_wp):
         rospy.logwarn("Upcoming light WP: %d", light_wp)
         self.upcoming_red_light_pub.publish(Int32(light_wp))
-
-    def get_closest_waypoint(self, position):
-        """Identifies the closest path waypoint to the given position
-            https://en.wikipedia.org/wiki/Closest_pair_of_points_problem
-        Args:
-            [x, y]
-
-        Returns:
-            int: index of the closest waypoint in self.waypoints
-
-        """
-        _, idx = self.waypoints_tree.query(position)
-        return idx
 
     def get_light_state(self, light):
         """Determines the current color of the traffic light
@@ -148,7 +133,7 @@ class TLDetector(object):
             int: ID of traffic light color (specified in styx_msgs/TrafficLight)
 
         """
-        if not (self.pose and self.waypoints and self.waypoints_tree):
+        if not (self.pose and self.waypoints):
             return LIGHT_NOT_FOUND
 
         nearest_light = None
@@ -157,11 +142,11 @@ class TLDetector(object):
         stop_line_positions = self.config['stop_line_positions']
         min_dist = len(self.waypoints.waypoints)
 
-        car_wp = self.get_closest_waypoint([self.pose.pose.position.x,
-                                            self.pose.pose.position.y])
+        car_wp = self.waypoints.find_closest(self.pose.pose.position.x,
+                                             self.pose.pose.position.y)
         for i, light in enumerate(self.lights):
-            line = stop_line_positions[i]
-            light_wp = self.get_closest_waypoint(line)
+            line_x, line_y = stop_line_positions[i]
+            light_wp = self.waypoints.find_closest(line_x, line_y)
             dist = light_wp - car_wp
             if (dist >= 0) and (dist < min_dist):
                 min_dist = dist
