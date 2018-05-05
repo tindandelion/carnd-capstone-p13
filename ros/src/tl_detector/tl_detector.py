@@ -44,7 +44,6 @@ class TLDetector(object):
         rospy.init_node('tl_detector')
 
         self.pose = None
-        self.waypoints = None
         self.stoplines = None
         self.camera_image = None
         self.lights = []
@@ -126,7 +125,6 @@ class TLDetector(object):
         self.state_count += 1
 
     def publish_upcoming_light(self, light_wp):
-        rospy.logwarn("Upcoming light WP: %d", light_wp)
         self.upcoming_red_light_pub.publish(Int32(light_wp))
 
     def get_light_state(self, light):
