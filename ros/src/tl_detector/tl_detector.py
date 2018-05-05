@@ -17,12 +17,35 @@ STATE_COUNT_THRESHOLD = 3
 LIGHT_NOT_FOUND = (-1, TrafficLight.UNKNOWN)
 
 
+class StopLines:
+    def __init__(self, waypoint_positions, stopline_positions):
+        self.waypoints = Waypoints(waypoint_positions)
+        self.stopline_waypoints = self._calc_stopline_waypoints(stopline_positions)
+
+    def _calc_stopline_waypoints(self, stopline_positions):
+        return [self.waypoints.find_closest(x, y) for x, y in stopline_positions]
+
+    def find_nearest_stopline(self, my_position):
+        my_waypoint = self.waypoints.find_closest(my_position.x, my_position.y)
+        min_distance = len(self.waypoints.waypoints)
+        nearest_so_far = None
+
+        for light_index, stopline_waypoint in enumerate(self.stopline_waypoints):
+            distance = stopline_waypoint - my_waypoint
+            if (distance >= 0) and (distance < min_distance):
+                min_distance = distance
+                nearest_so_far = (light_index, stopline_waypoint)
+
+        return nearest_so_far
+
+
 class TLDetector(object):
     def __init__(self):
         rospy.init_node('tl_detector')
 
         self.pose = None
         self.waypoints = None
+        self.stoplines = None
         self.camera_image = None
         self.lights = []
 
@@ -39,7 +62,7 @@ class TLDetector(object):
         rely on the position of the light and the camera image to predict it.
         '''
         sub3 = rospy.Subscriber('/vehicle/traffic_lights',
-                                TrafficLightArray, self.traffic_cb)
+                                TrafficLightArray, self.update_traffic_lights)
         sub6 = rospy.Subscriber('/image_color', Image, self.image_cb)
 
         config_string = rospy.get_param("/traffic_light_config")
@@ -65,8 +88,10 @@ class TLDetector(object):
 
     def update_base_waypoints(self, lane):
         self.waypoints = Waypoints(lane.waypoints)
+        self.stoplines = StopLines(
+            lane.waypoints, self.config['stop_line_positions'])
 
-    def traffic_cb(self, msg):
+    def update_traffic_lights(self, msg):
         self.lights = msg.lights
 
     def image_cb(self, msg):
@@ -133,29 +158,16 @@ class TLDetector(object):
             int: ID of traffic light color (specified in styx_msgs/TrafficLight)
 
         """
-        if not (self.pose and self.waypoints):
+        if not (self.pose and self.waypoints and len(self.lights) > 0):
             return LIGHT_NOT_FOUND
 
-        nearest_light = None
-
-        # List of positions that correspond to the line to stop in front of for a given intersection
-        stop_line_positions = self.config['stop_line_positions']
-        min_dist = len(self.waypoints.waypoints)
-
-        car_wp = self.waypoints.find_closest(self.pose.pose.position.x,
-                                             self.pose.pose.position.y)
-        for i, light in enumerate(self.lights):
-            line_x, line_y = stop_line_positions[i]
-            light_wp = self.waypoints.find_closest(line_x, line_y)
-            dist = light_wp - car_wp
-            if (dist >= 0) and (dist < min_dist):
-                min_dist = dist
-                nearest_light = (light, light_wp)
-
-        if nearest_light:
-            light, light_wp = nearest_light
-            state = self.get_light_state(light)
-            return light_wp, state
+        nearest_stopline = self.stoplines.find_nearest_stopline(
+            self.pose.pose.position)
+        if nearest_stopline:
+            light_index, waypoint = nearest_stopline
+            nearest_light = self.lights[light_index]
+            state = self.get_light_state(nearest_light)
+            return waypoint, state
         else:
             return LIGHT_NOT_FOUND
 
