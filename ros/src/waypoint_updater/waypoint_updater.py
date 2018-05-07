@@ -28,6 +28,7 @@ TODO (for Yousuf and Aaron): Stopline location for each traffic light.
 
 LOOKAHEAD_WPS = 200  # Number of waypoints we will publish. You can change this number
 
+
 class WaypointUpdater(object):
     def __init__(self):
         rospy.init_node('waypoint_updater')
@@ -44,6 +45,7 @@ class WaypointUpdater(object):
 
         self.current_pose = None
         self.waypoints = None
+        self.stopline_wp_index = -1
 
         self.update_loop()
 
@@ -55,11 +57,33 @@ class WaypointUpdater(object):
                 self.publish_waypoints(closest_wp_idx)
             rate.sleep()
 
-    def publish_waypoints(self, closest_idx):
-        lane = Lane()
-        lane.waypoints = self.waypoints.get_waypoints_in_range(
-            closest_idx, closest_idx+LOOKAHEAD_WPS)
+    def publish_waypoints(self, nearest_wp_index):
+        lane = self.generate_lane(nearest_wp_index)
         self.final_waypoints_pub.publish(lane)
+
+    def generate_lane(self, nearest_wp_index):
+        lane = Lane()
+        farthest_wp_index = nearest_wp_index + LOOKAHEAD_WPS
+        base_waypoints = self.waypoints.get_waypoints_in_range(nearest_wp_index, farthest_wp_index)
+        if (self.stopline_wp_index < 0) or (self.stopline_wp_index > farthest_wp_index):
+            lane.waypoints = base_waypoints
+        else:
+            lane.waypoints = self.decelerate(base_waypoints, nearest_wp_index, self.stopline_wp_index)
+        return lane
+
+    def decelerate(self, base_waypoints, nearest_wp_index, stopline_wp_index):
+        result = []
+        stop_wp_index = max(stopline_wp_index - nearest_wp_index - 50, 0)
+        for i, base_wp in enumerate(base_waypoints):
+            new_wp = Waypoint()
+            new_wp.pose = base_wp.pose
+            if i < stop_wp_index:
+                new_wp.twist.twist.linear.x =  base_wp.twist.twist.linear.x
+            else:
+                new_wp.twist.twist.linear.x = 0
+            result.append(new_wp)
+        
+        return result
 
     def closest_waypoint_index(self):
         return self.waypoints.find_closest_ahead(self.current_pose.position.x,
@@ -72,8 +96,7 @@ class WaypointUpdater(object):
         self.waypoints = Waypoints(lane.waypoints)
 
     def update_traffic_light_waypoint(self, msg):
-        rospy.logwarn("Next traffic light waypoint: %d", msg.data)
-        
+        self.stopline_wp_index = msg.data
 
     def obstacle_cb(self, msg):
         # TODO: Callback for /obstacle_waypoint message. We will implement it later

@@ -31,5 +31,6 @@ class Controller(object):
         cur_velocity = self.vel_filter.filt(cur_velocity)
         steer = self.yaw_controller.get_steering(lin_velocity, angular_velocity, cur_velocity)
         throttle = self.throttle_pid.step(lin_velocity - cur_velocity, sample_time)
-        
+        rospy.logwarn("cur_velocity: %.2f, req velocity: %.2f", cur_velocity, lin_velocity)
+
         return throttle, brake, steer
