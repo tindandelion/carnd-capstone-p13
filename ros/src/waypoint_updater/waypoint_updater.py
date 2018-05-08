@@ -28,6 +28,7 @@ TODO (for Yousuf and Aaron): Stopline location for each traffic light.
 
 LOOKAHEAD_WPS = 200  # Number of waypoints we will publish. You can change this number
 MAX_DECEL = 1.0
+SAFE_STOP_GAP = 3
 
 class WaypointUpdater(object):
     def __init__(self):
@@ -64,16 +65,16 @@ class WaypointUpdater(object):
     def generate_lane(self, nearest_wp_index):
         lane = Lane()
         farthest_wp_index = nearest_wp_index + LOOKAHEAD_WPS
-        base_waypoints = self.waypoints.get_waypoints_in_range(nearest_wp_index, farthest_wp_index)
+        final_waypoints = self.waypoints.get_waypoints_in_range(nearest_wp_index, farthest_wp_index)
         if (self.stopline_wp_index < 0) or (self.stopline_wp_index > farthest_wp_index):
-            lane.waypoints = base_waypoints
+            lane.waypoints = final_waypoints
         else:
-            lane.waypoints = self.decelerate(base_waypoints, nearest_wp_index, self.stopline_wp_index)
+            stop_wp_index = max(self.stopline_wp_index - nearest_wp_index - SAFE_STOP_GAP, 0)
+            lane.waypoints = self.decelerate(final_waypoints, stop_wp_index)
         return lane
 
-    def decelerate(self, base_waypoints, nearest_wp_index, stopline_wp_index):
+    def decelerate(self, base_waypoints, stop_wp_index):
         result = []
-        stop_wp_index = max(stopline_wp_index - nearest_wp_index - 3, 0)
         for i, base_wp in enumerate(base_waypoints):
             new_wp = Waypoint()
             new_wp.pose = base_wp.pose
