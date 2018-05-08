@@ -11,7 +11,7 @@ import tf
 import cv2
 import yaml
 
-from waypoints import Waypoints
+from common.waypoints import Waypoints
 
 STATE_COUNT_THRESHOLD = 3
 LIGHT_NOT_FOUND = (-1, TrafficLight.UNKNOWN)

@@ -9,7 +9,7 @@ from geometry_msgs.msg import PoseStamped
 from styx_msgs.msg import Lane, Waypoint
 from std_msgs.msg import Int32
 
-from waypoints import Waypoints
+from common.waypoints import Waypoints
 
 '''
 This node will publish waypoints from the car's current position to some `x` distance ahead.
