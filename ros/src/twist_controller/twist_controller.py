@@ -29,7 +29,7 @@ class Controller(object):
         self.brake_controller = BrakeController(decel_limit, vehicle_mass, wheel_radius)        
         self.yaw_controller = YawController(wheel_base, steer_ratio, MIN_SPEED, max_lat_accel, max_steer_angle)
         self.vel_filter = LowPassFilter(tau=0.5, ts=0.02)
-        self.throttle_pid = PID(kp=0.3, ki=0.02, kd=0.1, mn=0.0, mx=1.0)
+        self.throttle_pid = PID(kp=0.5, ki=0.01, kd=0.2, mn=0.0, mx=0.8)
 
         self.last_time = rospy.get_time()
         self.is_enabled = False
@@ -48,7 +48,7 @@ class Controller(object):
         velocity_error = lin_velocity - cur_velocity
         steer = self.yaw_controller.get_steering(lin_velocity, angular_velocity, cur_velocity)
         throttle = self.throttle_pid.step(velocity_error, sample_time)
-        self.velocities.append([lin_velocity, cur_velocity])
+        self.velocities.append([lin_velocity, cur_velocity, velocity_error])
 
         brake = 0.0
         # if lin_velocity == 0.0 and cur_velocity < 0.1:
@@ -62,5 +62,5 @@ class Controller(object):
     def dump(self, dump_dir):
         dump_file = os.path.join(dump_dir, 'velocities.csv')
         with open(dump_file, 'w') as f:
-            for lin, cur in self.velocities:
-                f.write("%f;%f\n" % (lin, cur))
+            for v in self.velocities:
+                f.write("%f;%f;%f\n" % tuple(v))
