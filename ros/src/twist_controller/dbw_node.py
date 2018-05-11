@@ -5,6 +5,7 @@ from std_msgs.msg import Bool
 from dbw_mkz_msgs.msg import ThrottleCmd, SteeringCmd, BrakeCmd, SteeringReport
 from geometry_msgs.msg import TwistStamped
 import math
+import os
 
 from twist_controller import Controller
 
@@ -92,6 +93,8 @@ class DBWNode(object):
                     self.publish(throttle, brake, steering)
 
             rate.sleep()
+        rospy.logwarn("Dumping the velocities")
+        self.controller.dump(os.path.dirname(__file__))
 
     def publish(self, throttle, brake, steer):
         tcmd = ThrottleCmd()
