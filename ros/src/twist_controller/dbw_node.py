@@ -59,7 +59,7 @@ class DBWNode(object):
 
         self.controller = Controller(wheel_base, steer_ratio, max_lat_accel,
                                      max_steer_angle, decel_limit, vehicle_mass, 
-                                     wheel_radius)
+                                     wheel_radius, brake_deadband)
 
         # TODO: Subscr8ibe to all the topics you need to
         rospy.Subscriber("/vehicle/dbw_enabled", Bool, self.toggle_dbw)
